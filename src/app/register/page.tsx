@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [claimToken, setClaimToken] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,6 +42,7 @@ export default function RegisterPage() {
 
       if (result.claimToken) {
         localStorage.setItem("dandiyaa_claim_token", result.claimToken);
+        setClaimToken(result.claimToken);
       }
       setDone(true);
     } catch (err) {
@@ -58,6 +60,13 @@ export default function RegisterPage() {
           <div className="eyebrow gold">YOU&apos;RE IN</div>
           <h1>See you on the dance floor.</h1>
           <p>Your private match code is saved on this device. Keep it private—it is how Dandiyaa proves this registration is yours.</p>
+          {claimToken ? (
+            <div className="claim-code">
+              <span>Private match code</span>
+              <code>{claimToken}</code>
+              <button className="pill ghost" type="button" onClick={() => navigator.clipboard.writeText(claimToken)}>Copy code</button>
+            </div>
+          ) : null}
           <Link className="pill primary" href="/match">Open my match page</Link>
           <Link className="text-link" href="/">Back to the countdown</Link>
         </div>
@@ -111,8 +120,8 @@ export default function RegisterPage() {
         <div className="two-col">
           <label>
             PRN / roll number
-            <input name="prn" required minLength={3} maxLength={80} placeholder="Used only for verification / dedupe" />
-            <small>Never shown to other participants.</small>
+            <input name="prn" required minLength={3} maxLength={80} placeholder="Used to prevent duplicate registrations" />
+            <small>Never shown to other participants. This is not official college verification.</small>
           </label>
           <label>
             Partner preference
