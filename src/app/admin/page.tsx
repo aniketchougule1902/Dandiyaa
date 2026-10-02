@@ -132,7 +132,7 @@ export default function AdminPage() {
           <div className="eyebrow">PAIRING ENGINE</div>
           <h2>Scramble each college separately.</h2>
           <p>Generation is locked until the configured registration deadline has passed. Preferences influence the random pairing but do not prevent fallback matches.</p>
-          <button className="pill primary" onClick={generate} disabled={busy || dashboard.event.status === "matched"}>Generate partners</button>
+          <button className="pill primary" onClick={generate} disabled={busy || dashboard.stats.waiting < 2}>Generate / rematch waiting participants</button>
         </div>
       </section>
 
