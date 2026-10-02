@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { isAdminSessionValid } from "@/lib/admin-session";
 import { createAdminClient } from "@/lib/supabase-admin";
-import { generatePairs, type ParticipantForMatching } from "@/lib/matching";
+import {
+  generatePairs,
+  pairKey,
+  type ParticipantForMatching
+} from "@/lib/matching";
 
 export async function POST() {
   if (!(await isAdminSessionValid())) {
@@ -19,10 +23,6 @@ export async function POST() {
     return NextResponse.json({ error: "Event state unavailable." }, { status: 500 });
   }
 
-  if (event.status === "matched") {
-    return NextResponse.json({ error: "Matches have already been generated." }, { status: 409 });
-  }
-
   if (Date.now() < new Date(event.registration_closes_at).getTime()) {
     return NextResponse.json(
       { error: "Registration is still open. Close it before generating matches." },
@@ -30,28 +30,67 @@ export async function POST() {
     );
   }
 
-  const { data, error } = await supabase
-    .from("participants")
-    .select("id,college,study_year,preference")
-    .eq("status", "waiting");
+  const [
+    { data: waiting, error: participantsError },
+    { data: historicalMatches, error: matchesError },
+    { data: blocks, error: blocksError }
+  ] = await Promise.all([
+    supabase
+      .from("participants")
+      .select("id,college,study_year,preference")
+      .eq("status", "waiting"),
+    supabase
+      .from("matches")
+      .select("participant_a,participant_b")
+      .in("status", ["rejected", "blocked", "superseded"]),
+    supabase
+      .from("blocks")
+      .select("blocker_id,blocked_id")
+  ]);
 
-  if (error) return NextResponse.json({ error: "Unable to load participants." }, { status: 500 });
+  if (participantsError || matchesError || blocksError) {
+    return NextResponse.json({ error: "Unable to prepare the matching pool." }, { status: 500 });
+  }
 
-  const participants: ParticipantForMatching[] = (data ?? []).map((p) => ({
+  const participants: ParticipantForMatching[] = (waiting ?? []).map((p) => ({
     id: p.id,
     college: p.college as ParticipantForMatching["college"],
     year: p.study_year,
     preference: p.preference as ParticipantForMatching["preference"]
   }));
 
-  const result = generatePairs(participants);
+  const excludedPairs = new Set<string>();
+  for (const match of historicalMatches ?? []) {
+    excludedPairs.add(pairKey(match.participant_a, match.participant_b));
+  }
+  for (const block of blocks ?? []) {
+    excludedPairs.add(pairKey(block.blocker_id, block.blocked_id));
+  }
+
+  const result = generatePairs(participants, excludedPairs);
+
+  if (!result.pairs.length) {
+    return NextResponse.json({
+      ok: true,
+      pairsCreated: 0,
+      unmatched: result.unmatched.length,
+      unmatchedByCollege: {
+        pccoe: result.unmatched.filter((p) => p.college === "pccoe").length,
+        dyp: result.unmatched.filter((p) => p.college === "dyp").length
+      },
+      message: "No safe new pairings are currently available."
+    });
+  }
 
   const { data: created, error: rpcError } = await supabase.rpc("apply_match_batch", {
     payload: result.pairs
   });
 
   if (rpcError) {
-    return NextResponse.json({ error: "Match generation failed safely; no partial batch was accepted." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Match generation failed safely; no partial batch was accepted." },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({
