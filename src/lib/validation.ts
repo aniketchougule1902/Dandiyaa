@@ -31,5 +31,6 @@ export const adminLoginSchema = z.object({
 
 export const eventUpdateSchema = z.object({
   registrationClosesAt: z.string().datetime(),
-  title: z.string().trim().min(2).max(100).default("Dandiyaa Night")
+  title: z.string().trim().min(2).max(100).default("Dandiyaa Night"),
+  supportContact: z.string().trim().min(5).max(160)
 });
