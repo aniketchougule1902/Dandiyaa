@@ -81,6 +81,17 @@ export async function POST(request: Request) {
       .update({ status: "waiting" })
       .in("id", [me.id, partnerId]);
 
+    if (action === "block") {
+      await supabase.from("blocks").upsert(
+        {
+          blocker_id: me.id,
+          blocked_id: partnerId,
+          match_id: match.id
+        },
+        { onConflict: "blocker_id,blocked_id" }
+      );
+    }
+
     if (action === "report") {
       await supabase.from("reports").insert({
         reporter_id: me.id,
