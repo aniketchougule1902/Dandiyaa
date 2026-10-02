@@ -14,6 +14,10 @@ export type Pair = {
   score: number;
 };
 
+export function pairKey(a: string, b: string) {
+  return [a, b].sort().join(":");
+}
+
 function preferenceScore(
   person: ParticipantForMatching,
   candidate: ParticipantForMatching
@@ -34,47 +38,63 @@ function shuffle<T>(items: T[]) {
   return result;
 }
 
-function pairCollege(pool: ParticipantForMatching[]) {
+function pairCollege(
+  pool: ParticipantForMatching[],
+  excludedPairs: ReadonlySet<string>
+) {
   const waiting = shuffle(pool);
   const pairs: Pair[] = [];
+  const unmatched: ParticipantForMatching[] = [];
 
   while (waiting.length >= 2) {
     const current = waiting.shift()!;
-    let bestIndex = 0;
-    let bestScore = -1;
+    const eligible = waiting
+      .map((candidate, index) => ({
+        candidate,
+        index,
+        score:
+          preferenceScore(current, candidate) +
+          preferenceScore(candidate, current)
+      }))
+      .filter(({ candidate }) => !excludedPairs.has(pairKey(current.id, candidate.id)));
 
-    for (let i = 0; i < waiting.length; i += 1) {
-      const candidate = waiting[i];
-      const score =
-        preferenceScore(current, candidate) +
-        preferenceScore(candidate, current);
+    if (!eligible.length) {
+      unmatched.push(current);
+      continue;
+    }
 
-      if (score > bestScore) {
-        bestScore = score;
-        bestIndex = i;
-      } else if (score === bestScore && randomInt(2) === 1) {
-        bestIndex = i;
+    let best = eligible[0];
+    for (const option of eligible.slice(1)) {
+      if (
+        option.score > best.score ||
+        (option.score === best.score && randomInt(2) === 1)
+      ) {
+        best = option;
       }
     }
 
-    const [partner] = waiting.splice(bestIndex, 1);
+    const [partner] = waiting.splice(best.index, 1);
     pairs.push({
       participantA: current.id,
       participantB: partner.id,
       college: current.college,
-      score: Math.max(bestScore, 0)
+      score: Math.max(best.score, 0)
     });
   }
 
-  return { pairs, unmatched: waiting };
+  unmatched.push(...waiting);
+  return { pairs, unmatched };
 }
 
-export function generatePairs(participants: ParticipantForMatching[]) {
+export function generatePairs(
+  participants: ParticipantForMatching[],
+  excludedPairs: ReadonlySet<string> = new Set()
+) {
   const pccoe = participants.filter((p) => p.college === "pccoe");
   const dyp = participants.filter((p) => p.college === "dyp");
 
-  const a = pairCollege(pccoe);
-  const b = pairCollege(dyp);
+  const a = pairCollege(pccoe, excludedPairs);
+  const b = pairCollege(dyp, excludedPairs);
 
   return {
     pairs: [...a.pairs, ...b.pairs],
