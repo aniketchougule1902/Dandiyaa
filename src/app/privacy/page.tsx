@@ -15,7 +15,7 @@ export default function PrivacyPage() {
       </section>
       <section>
         <h2>Why we use it</h2>
-        <p>To verify/deduplicate registrations, operate the countdown and college-specific matching, reveal your match privately, handle mutual acceptance, and respond to safety or deletion requests.</p>
+        <p>To prevent duplicate registrations, operate the countdown and college-specific matching, reveal your match privately, handle mutual acceptance, and respond to safety or deletion requests. A PRN/roll number entry is not an official college identity-verification service.</p>
       </section>
       <section>
         <h2>What other participants can see</h2>
