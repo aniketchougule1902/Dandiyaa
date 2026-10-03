@@ -52,7 +52,7 @@ This checklist is intentionally ordered so every hourly run leaves the product i
 ## Run 08 — Safety
 - [ ] Block flow
 - [ ] Report flow
-- [ ] Contact/grievance information
+- [x] Contact/grievance schema foundation
 - [ ] Account/data deletion request flow
 - [ ] Admin moderation view
 
