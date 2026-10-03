@@ -49,6 +49,7 @@ export async function POST(request: Request) {
       title: parsed.data.title,
       registration_closes_at: parsed.data.registrationClosesAt,
       status: new Date(parsed.data.registrationClosesAt).getTime() > Date.now() ? "open" : "closed",
+      support_contact: parsed.data.supportContact,
       updated_at: new Date().toISOString()
     })
     .eq("id", 1);
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
 
   await supabase.from("admin_audit").insert({
     action: "update_event",
-    metadata: { registrationClosesAt: parsed.data.registrationClosesAt }
+    metadata: { registrationClosesAt: parsed.data.registrationClosesAt, supportContactConfigured: true }
   });
 
   return NextResponse.json({ ok: true });
